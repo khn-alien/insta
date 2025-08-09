@@ -72,5 +72,5 @@ def main():
 
     print(f"✅ Done! {count} videos saved in '{DOWNLOAD_FOLDER}'.")
 
-if name == "__main__":
+if __name__ == "__main__":
     main()
