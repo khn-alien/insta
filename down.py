@@ -1,7 +1,8 @@
 import instaloader
 import os
 import shutil
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import getpass
 
 def main():
     # Inputs from user
@@ -18,21 +19,40 @@ def main():
         print("Invalid number. Using default of 7 days.")
         DAYS = 7
 
+    # Instagram login
+    USERNAME = input("Enter Instagram username: ").strip()
+    PASSWORD = getpass.getpass("Enter Instagram password: ")
+
     # Setup download folder in Termux storage downloads
     DOWNLOAD_FOLDER = os.path.expanduser('~/storage/downloads/instagram_videos')
     os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
-    print(f"Saving videos to: {DOWNLOAD_FOLDER}")
+    print(f"\n📁 Saving videos to: {DOWNLOAD_FOLDER}\n")
 
-    L = instaloader.Instaloader()
+    L = instaloader.Instaloader(save_metadata=False, post_metadata_txt_pattern='')
 
-    # Uncomment to login (optional, helps if you want more results or private content)
-    # L.login('your_username', 'your_password')
+    # Try loading session if it exists
+    try:
+        L.load_session_from_file(USERNAME)
+        print("🔓 Logged in using saved session.")
+    except:
+        print("🔐 No saved session. Logging in manually...")
+        try:
+            L.login(USERNAME, PASSWORD)
+            L.save_session_to_file()
+            print("✅ Login successful. Session saved.")
+        except Exception as e:
+            print(f"❌ Login failed: {e}")
+            return
 
-    hashtag = instaloader.Hashtag.from_name(L.context, HASHTAG)
+    try:
+        hashtag = instaloader.Hashtag.from_name(L.context, HASHTAG)
+    except Exception as e:
+        print(f"❌ Failed to retrieve hashtag #{HASHTAG}: {e}")
+        return
 
     count = 0
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     time_threshold = now - timedelta(days=DAYS)
 
     for post in hashtag.get_posts():
@@ -41,36 +61,41 @@ def main():
             final_path = os.path.join(DOWNLOAD_FOLDER, video_filename)
 
             if os.path.exists(final_path):
-                print(f"Skipping duplicate: {video_filename}")
+                print(f"⚠️ Skipping duplicate: {video_filename}")
                 continue
 
             temp_folder = "_temp_download"
             os.makedirs(temp_folder, exist_ok=True)
 
-            print(f"Downloading video: {post.shortcode} from #{HASHTAG}")
-            L.download_post(post, target=temp_folder)
+            print(f"⬇️ Downloading video: {post.shortcode} | Date: {post.date_utc.strftime('%Y-%m-%d')}")
 
-            # Move .mp4 file to final folder
-            moved = False
-            for file in os.listdir(temp_folder):
-                if file.endswith(".mp4"):
-                    shutil.move(os.path.join(temp_folder, file), final_path)
-                    moved = True
-                    break
+            try:
+                L.download_post(post, target=temp_folder)
 
-            if not moved:
-                print(f"Warning: No video file found for post {post.shortcode}")
+                # Move .mp4 file to final folder
+                moved = False
+                for file in os.listdir(temp_folder):
+                    if file.endswith(".mp4"):
+                        shutil.move(os.path.join(temp_folder, file), final_path)
+                        moved = True
+                        break
+
+                if not moved:
+                    print(f"⚠️ Warning: No video file found for post {post.shortcode}")
+
+            except Exception as e:
+                print(f"❌ Failed to download {post.shortcode}: {e}")
 
             # Clean temp folder
             shutil.rmtree(temp_folder, ignore_errors=True)
 
             count += 1
-            print(f"Downloaded {count}/{LIMIT} videos.")
+            print(f"✅ Downloaded {count}/{LIMIT} videos.\n")
 
             if count >= LIMIT:
                 break
 
-    print(f"✅ Done! {count} videos saved in '{DOWNLOAD_FOLDER}'.")
+    print(f"🎉 Done! {count} videos saved in '{DOWNLOAD_FOLDER}'.")
 
 if __name__ == "__main__":
     main()
