@@ -5,33 +5,39 @@ from datetime import datetime, timedelta, timezone
 import getpass
 
 def main():
-    # Inputs from user
-    HASHTAG = input("Enter hashtag (without #): ").strip()
+    # User inputs
+    HASHTAG = input("🔍 Enter hashtag (without #): ").strip()
     try:
-        LIMIT = int(input("Enter number of videos to download: "))
+        LIMIT = int(input("📥 Enter number of videos to download: "))
     except ValueError:
-        print("Invalid number. Using default of 5.")
+        print("⚠️ Invalid number. Using default of 5.")
         LIMIT = 5
 
     try:
-        DAYS = int(input("Enter max age of posts in days (e.g., 7 for last week): "))
+        DAYS = int(input("📅 Enter max age of posts in days (e.g., 7): "))
     except ValueError:
-        print("Invalid number. Using default of 7 days.")
+        print("⚠️ Invalid number. Using default of 7 days.")
         DAYS = 7
 
-    # Instagram login
-    USERNAME = input("Enter Instagram username: ").strip()
-    PASSWORD = getpass.getpass("Enter Instagram password: ")
+    USERNAME = input("👤 Enter Instagram username: ").strip()
+    PASSWORD = getpass.getpass("🔑 Enter Instagram password: ")
 
-    # Setup download folder in Termux storage downloads
+    # Setup download folder
     DOWNLOAD_FOLDER = os.path.expanduser('~/storage/downloads/instagram_videos')
     os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
     print(f"\n📁 Saving videos to: {DOWNLOAD_FOLDER}\n")
 
-    L = instaloader.Instaloader(save_metadata=False, post_metadata_txt_pattern='')
+    # Setup Instaloader instance
+    L = instaloader.Instaloader(
+        save_metadata=False,
+        post_metadata_txt_pattern='',
+        download_pictures=False,
+        download_video_thumbnails=False,
+        compress_json=False
+    )
 
-    # Try loading session if it exists
+    # Try to load session
     try:
         L.load_session_from_file(USERNAME)
         print("🔓 Logged in using saved session.")
@@ -45,6 +51,7 @@ def main():
             print(f"❌ Login failed: {e}")
             return
 
+    # Get hashtag data
     try:
         hashtag = instaloader.Hashtag.from_name(L.context, HASHTAG)
     except Exception as e:
@@ -72,7 +79,7 @@ def main():
             try:
                 L.download_post(post, target=temp_folder)
 
-                # Move .mp4 file to final folder
+                # Move video file to target folder
                 moved = False
                 for file in os.listdir(temp_folder):
                     if file.endswith(".mp4"):
@@ -86,7 +93,7 @@ def main():
             except Exception as e:
                 print(f"❌ Failed to download {post.shortcode}: {e}")
 
-            # Clean temp folder
+            # Clean up temp folder
             shutil.rmtree(temp_folder, ignore_errors=True)
 
             count += 1
