@@ -7,7 +7,7 @@ def get_download_path():
     return path
 
 def main():
-    print("📺 YouTube Shorts/Video Downloader by Keyword (No Login Required)\n")
+    print("📺 YouTube Shorts Downloader (High Quality, <=30 sec, Creative Commons)\n")
 
     keyword = input("🔍 Enter keyword or genre to search: ").strip()
     count = input("🎯 How many videos to download? (default 5): ").strip()
@@ -18,14 +18,16 @@ def main():
         count = 5
 
     output_dir = get_download_path()
-    print(f"\n⬇️ Downloading top {count} videos for keyword: '{keyword}' ...\n")
+    print(f"\n⬇️ Downloading top {count} videos for keyword: '{keyword}' with max 30 sec length...\n")
 
     cmd = [
         "yt-dlp",
         f"ytsearch{count}:{keyword} shorts",
-        "-f", "mp4",
+        "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]",
+        "--match-filter", "duration <= 30 and license = CreativeCommons",
         "-o", f"{output_dir}/%(title).50s.%(ext)s",
-        "--no-playlist"
+        "--no-playlist",
+        "--merge-output-format", "mp4"
     ]
 
     subprocess.run(cmd)
